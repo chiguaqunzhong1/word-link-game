@@ -1,5 +1,6 @@
 [
   { "name": "默认单词本", "file": "default.txt" },
+  { "name": "python高频词库", "file": "python.txt" },
   { "name": "动物单词", "file": "animals.txt" },
   { "name": "食物单词", "file": "food.txt" }
 ]

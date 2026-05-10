@@ -1,0 +1,74 @@
+variable,变量
+string,字符串
+integer,整数
+float,浮点数
+boolean,布尔值
+list,列表
+tuple,元组
+dictionary,字典
+set,集合
+function,函数
+parameter,参数
+argument,实参
+return,返回
+print,打印
+input,输入
+output,输出
+loop,循环
+for loop,for循环
+while loop,while循环
+condition,条件
+if statement,if语句
+else statement,else语句
+elif statement,elif语句
+operator,运算符
+assignment,赋值
+comparison,比较
+equal,等于
+not equal,不等于
+greater than,大于
+less than,小于
+and,并且
+or,或者
+not,非
+index,索引
+slice,切片
+length,长度
+append,追加
+remove,移除
+insert,插入
+sort,排序
+reverse,反转
+key,键
+value,值
+item,项目
+method,方法
+class,类
+object,对象
+module,模块
+package,包
+import,导入
+file,文件
+open,打开
+read,读取
+write,写入
+close,关闭
+error,错误
+exception,异常
+debug,调试
+comment,注释
+syntax,语法
+indentation,缩进
+keyword,关键字
+True,真
+False,假
+None,空值
+range,范围
+break,跳出循环
+continue,继续循环
+pass,占位语句
+global,全局
+local,局部
+scope,作用域
+type,类型
+convert,转换
