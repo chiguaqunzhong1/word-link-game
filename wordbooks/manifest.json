@@ -1,0 +1,5 @@
+[
+  { "name": "默认单词本", "file": "default.txt" },
+  { "name": "动物单词", "file": "animals.txt" },
+  { "name": "食物单词", "file": "food.txt" }
+]
