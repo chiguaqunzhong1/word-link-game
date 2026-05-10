@@ -1,0 +1,12 @@
+cat,猫
+dog,狗
+bird,鸟
+fish,鱼
+rabbit,兔子
+tiger,老虎
+lion,狮子
+horse,马
+sheep,羊
+monkey,猴子
+panda,熊猫
+fox,狐狸

@@ -1,0 +1,1317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>背单词上升连连看</title>
+  <style>
+    :root {
+      --ink: #000000;
+      --ink-deep: #090909;
+      --charcoal: #525252;
+      --body: #737373;
+      --muted: #a3a3a3;
+      --canvas: #ffffff;
+      --soft: #fafafa;
+      --card: #ffffff;
+      --hairline: #e5e5e5;
+      --hairline-strong: #d4d4d4;
+      --dark: #171717;
+      --blue-bg: #eef5ff;
+      --blue-border: #b7d2ff;
+      --blue-text: #1f5fbf;
+      --orange-bg: #fff3e4;
+      --orange-border: #ffd19a;
+      --orange-text: #a25000;
+      --red-bg: #ffecec;
+      --red-border: #ff9d9d;
+      --red-text: #bd2626;
+      --green-bg: #eefaf2;
+      --green-border: #a8ddb7;
+      --green-text: #24763b;
+      --shadow-soft: 0 14px 40px rgba(0,0,0,.06);
+      --radius-card: 14px;
+      --radius-pill: 9999px;
+      --cell-gap: 8px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { height: 100%; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--canvas);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+    }
+
+    button, textarea, select {
+      font: inherit;
+    }
+
+    .page {
+      width: min(1200px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 28px 0 34px;
+    }
+
+    .hero {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-size: clamp(30px, 4vw, 42px);
+      line-height: 1.12;
+      font-weight: 650;
+      letter-spacing: -0.03em;
+    }
+
+    .hero p {
+      width: min(680px, 100%);
+      margin: 12px auto 0;
+      color: var(--body);
+      font-size: 15px;
+      line-height: 1.65;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 340px;
+      gap: 24px;
+      align-items: start;
+    }
+
+    .game-card, .panel {
+      border: 1px solid var(--hairline);
+      border-radius: var(--radius-card);
+      background: var(--card);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .game-card {
+      padding: 18px;
+      position: relative;
+    }
+
+    .game-topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+      color: var(--body);
+      font-size: 13px;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 6px 12px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--hairline);
+      background: var(--soft);
+      color: var(--charcoal);
+      white-space: nowrap;
+    }
+
+    .board-shell {
+      position: relative;
+      border: 1px solid var(--hairline-strong);
+      border-radius: 18px;
+      padding: 12px;
+      background:
+        linear-gradient(to bottom, rgba(0,0,0,.035) 1px, transparent 1px),
+        linear-gradient(to right, rgba(0,0,0,.035) 1px, transparent 1px),
+        #fafafa;
+      background-size: calc((100% - 24px) / 8) calc((100% - 24px) / 12);
+      overflow: hidden;
+    }
+
+    .board {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(8, minmax(0, 1fr));
+      grid-template-rows: repeat(12, 54px);
+      gap: var(--cell-gap);
+      min-height: calc(12 * 54px + 11 * var(--cell-gap));
+    }
+
+    .cell {
+      position: relative;
+      border-radius: 12px;
+      min-width: 0;
+      pointer-events: none;
+    }
+
+    .block {
+      position: absolute;
+      left: 0;
+      top: 0;
+      border: 1px solid var(--hairline-strong);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 7px;
+      text-align: center;
+      line-height: 1.2;
+      font-size: clamp(13px, 1.4vw, 16px);
+      font-weight: 650;
+      cursor: pointer;
+      user-select: none;
+      box-shadow: 0 8px 18px rgba(0,0,0,.06);
+      transition: transform .3s cubic-bezier(.2,.8,.2,1), border-color .16s ease, box-shadow .16s ease, opacity .22s ease;
+      animation: riseIn .22s ease both;
+      overflow-wrap: anywhere;
+      will-change: transform, opacity;
+      z-index: 2;
+    }
+
+    .block.en {
+      color: var(--blue-text);
+      border-color: var(--blue-border);
+      background: linear-gradient(180deg, #f7fbff, var(--blue-bg));
+    }
+
+    .block.zh {
+      color: var(--orange-text);
+      border-color: var(--orange-border);
+      background: linear-gradient(180deg, #fffaf4, var(--orange-bg));
+    }
+
+    .block:hover {
+      box-shadow: 0 12px 24px rgba(0,0,0,.09);
+    }
+
+    .block.selected {
+      outline: 3px solid rgba(0,0,0,.18);
+      border-color: var(--ink);
+      box-shadow: 0 14px 28px rgba(0,0,0,.13);
+      z-index: 4;
+    }
+
+    .block.success {
+      pointer-events: none;
+      animation: popOut .24s ease forwards;
+      z-index: 5;
+    }
+
+    .block.error {
+      color: var(--red-text);
+      border-color: var(--red-border);
+      background: var(--red-bg);
+      animation: shake .32s ease;
+      z-index: 5;
+    }
+
+    .particle {
+      position: absolute;
+      width: 7px;
+      height: 7px;
+      border-radius: 9999px;
+      pointer-events: none;
+      z-index: 9;
+      opacity: 0;
+      animation: fireworkBurst .62s cubic-bezier(.1,.8,.2,1) forwards;
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: none;
+      place-items: center;
+      padding: 24px;
+      background: rgba(255,255,255,.78);
+      backdrop-filter: blur(8px);
+      z-index: 5;
+    }
+
+    .overlay.show { display: grid; }
+
+    .overlay-card {
+      width: min(420px, 92%);
+      padding: 28px;
+      border: 1px solid var(--hairline);
+      border-radius: 20px;
+      background: #fff;
+      text-align: center;
+      box-shadow: 0 20px 70px rgba(0,0,0,.14);
+    }
+
+    .overlay-card h2 {
+      margin: 0 0 10px;
+      font-size: 26px;
+      line-height: 1.2;
+    }
+
+    .overlay-card p {
+      margin: 0;
+      color: var(--body);
+      line-height: 1.6;
+    }
+
+    .panel {
+      padding: 18px;
+      position: sticky;
+      top: 18px;
+    }
+
+    .panel-section {
+      padding: 16px 0;
+      border-bottom: 1px solid var(--hairline);
+    }
+
+    .panel-section:first-child { padding-top: 0; }
+    .panel-section:last-child { border-bottom: 0; padding-bottom: 0; }
+
+    .btn {
+      width: 100%;
+      border: 1px solid var(--ink);
+      border-radius: var(--radius-pill);
+      background: var(--ink);
+      color: #fff;
+      height: 42px;
+      padding: 0 18px;
+      font-weight: 650;
+      cursor: pointer;
+      transition: transform .15s ease, background .15s ease, border-color .15s ease;
+    }
+
+    .btn:hover { transform: translateY(-1px); background: var(--ink-deep); }
+
+    .btn.secondary {
+      background: #fff;
+      color: var(--ink);
+      border-color: var(--hairline-strong);
+    }
+
+    .btn-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .difficulty {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .difficulty button {
+      height: 36px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--hairline-strong);
+      background: #fff;
+      color: var(--charcoal);
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .difficulty button.active {
+      background: var(--ink);
+      border-color: var(--ink);
+      color: #fff;
+    }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 14px;
+      padding: 12px 14px;
+      border: 1px solid var(--hairline);
+      border-radius: 14px;
+      background: var(--soft);
+    }
+
+    .toggle-text strong {
+      display: block;
+      font-size: 14px;
+      color: var(--ink);
+      margin-bottom: 2px;
+    }
+
+    .toggle-text span {
+      display: block;
+      font-size: 12px;
+      color: var(--body);
+      line-height: 1.35;
+    }
+
+    .switch {
+      position: relative;
+      flex: 0 0 auto;
+      width: 76px;
+      height: 36px;
+      border: 1px solid var(--hairline-strong);
+      border-radius: var(--radius-pill);
+      background: #fff;
+      cursor: pointer;
+      transition: background .18s ease, border-color .18s ease;
+    }
+
+    .switch::before {
+      content: "OFF";
+      position: absolute;
+      inset: 3px auto 3px 3px;
+      width: 38px;
+      display: grid;
+      place-items: center;
+      border-radius: var(--radius-pill);
+      background: var(--ink);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .02em;
+      transition: transform .18s ease, content .18s ease;
+    }
+
+    .switch::after {
+      content: "";
+      position: absolute;
+      left: 4px;
+      top: 4px;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: var(--ink);
+      transition: transform .18s ease;
+    }
+
+    .switch.on {
+      background: var(--ink);
+      border-color: var(--ink);
+    }
+
+    .switch.on::before {
+      content: "ON";
+      transform: translateX(31px);
+      background: #fff;
+      color: var(--ink);
+    }
+
+    .switch.on::after {
+      background: #fff;
+      transform: translateX(38px);
+    }
+
+    .label {
+      display: block;
+      margin: 0 0 10px;
+      font-size: 13px;
+      color: var(--body);
+      font-weight: 650;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .stat {
+      border: 1px solid var(--hairline);
+      border-radius: 14px;
+      padding: 14px;
+      background: var(--soft);
+    }
+
+    .stat .name {
+      font-size: 12px;
+      color: var(--body);
+      margin-bottom: 6px;
+    }
+
+    .stat .value {
+      font-size: 24px;
+      line-height: 1;
+      font-weight: 750;
+    }
+
+    .wordbook-status {
+      margin: 0;
+      color: var(--charcoal);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .wordbook-list {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .wordbook-option {
+      width: 100%;
+      min-height: 38px;
+      border: 1px solid var(--hairline-strong);
+      border-radius: 12px;
+      background: #fff;
+      color: var(--charcoal);
+      padding: 8px 12px;
+      text-align: left;
+      font-weight: 650;
+      cursor: pointer;
+      transition: background .15s ease, color .15s ease, border-color .15s ease, transform .15s ease;
+    }
+
+    .wordbook-option:hover {
+      transform: translateY(-1px);
+      border-color: var(--ink);
+    }
+
+    .wordbook-option.active {
+      background: var(--ink);
+      border-color: var(--ink);
+      color: #fff;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 150px;
+      border: 1px solid var(--hairline-strong);
+      border-radius: 14px;
+      background: #fff;
+      resize: vertical;
+      padding: 12px;
+      line-height: 1.45;
+      color: var(--ink);
+      outline: none;
+    }
+
+    textarea:focus {
+      border-color: var(--ink);
+      box-shadow: 0 0 0 4px rgba(59,130,246,.18);
+    }
+
+    .hint {
+      margin: 8px 0 12px;
+      color: var(--body);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .message {
+      min-height: 22px;
+      margin-top: 10px;
+      color: var(--body);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .message.error { color: var(--red-text); }
+    .message.success { color: var(--green-text); }
+
+    .rules {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--body);
+      font-size: 13px;
+      line-height: 1.65;
+    }
+
+    @keyframes riseIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes popOut {
+      to { opacity: 0; filter: blur(2px); }
+    }
+
+    @keyframes fireworkBurst {
+      0% { opacity: 1; transform: translate(-50%, -50%) scale(.8); }
+      70% { opacity: 1; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1); }
+      100% { opacity: 0; transform: translate(calc(-50% + var(--dx) * 1.12), calc(-50% + var(--dy) * 1.12)) scale(.2); }
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-5px); }
+      40% { transform: translateX(5px); }
+      60% { transform: translateX(-4px); }
+      80% { transform: translateX(4px); }
+    }
+
+    @media (max-width: 920px) {
+      .layout { grid-template-columns: 1fr; }
+      .panel { position: static; }
+      .board { grid-template-rows: repeat(12, 48px); min-height: calc(12 * 48px + 11 * var(--cell-gap)); }
+    }
+
+    @media (max-width: 560px) {
+      .page { width: min(100vw - 18px, 1200px); padding-top: 18px; }
+      .game-card, .panel { padding: 12px; }
+      .board-shell { padding: 8px; }
+      .board { gap: 5px; grid-template-rows: repeat(12, 42px); min-height: calc(12 * 42px + 11 * 5px); }
+      .block { font-size: 12px; border-radius: 9px; padding: 4px; }
+      .game-topbar { flex-direction: column; align-items: stretch; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <h1>背单词上升连连看</h1>
+      <p>底部会不断生成新的单词块行，把已有内容整体向上推。点击匹配的英文与中文即可消除，尽量在单词块顶破顶部前拿到更高分。</p>
+    </header>
+
+    <section class="layout">
+      <section class="game-card" aria-label="游戏主画面">
+        <div class="game-topbar">
+          <span class="status-pill" id="gameStateText">未开始：点击右侧按钮开始游戏</span>
+          <span class="status-pill" id="speedText">普通：每 3000ms 生成一排</span>
+        </div>
+        <div class="board-shell">
+          <div class="board" id="board"></div>
+          <div class="overlay" id="overlay">
+            <div class="overlay-card">
+              <h2 id="overlayTitle">游戏结束</h2>
+              <p id="overlayText">游戏结束！你的得分是：0</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="panel" aria-label="游戏控制 UI">
+        <div class="panel-section">
+          <div class="btn-row">
+            <button class="btn" id="startBtn">游戏开始</button>
+            <button class="btn secondary" id="pauseBtn" disabled>暂停</button>
+          </div>
+          <div class="message" id="systemMessage"></div>
+        </div>
+
+        <div class="panel-section">
+          <span class="label">难度</span>
+          <div class="difficulty" id="difficultyGroup">
+            <button data-difficulty="easy">简单</button>
+            <button data-difficulty="normal" class="active">普通</button>
+            <button data-difficulty="hard">困难</button>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-text">
+              <strong>随机单词块：<span id="randomModeState">OFF</span></strong>
+              <span id="randomModeHint">OFF：每一排生成的单词块全部可匹配。</span>
+            </div>
+            <button class="switch" id="randomModeToggle" type="button" aria-pressed="false" aria-label="随机单词块开关"></button>
+          </div>
+        </div>
+
+        <div class="panel-section">
+          <span class="label">当前成绩</span>
+          <div class="stats">
+            <div class="stat"><div class="name">得分</div><div class="value" id="scoreText">0</div></div>
+            <div class="stat"><div class="name">连击</div><div class="value" id="comboText">0</div></div>
+            <div class="stat"><div class="name">最高分</div><div class="value" id="bestText">0</div></div>
+            <div class="stat"><div class="name">单词数</div><div class="value" id="wordCountText">0</div></div>
+          </div>
+        </div>
+
+        <div class="panel-section">
+          <span class="label">选择单词本</span>
+          <p class="wordbook-status" id="wordbookStatus">默认单词本已载入。</p>
+          <div class="wordbook-list" id="wordbookList" aria-label="可选单词本列表"></div>
+        </div>
+
+        <div class="panel-section">
+          <span class="label">导入自定义单词本</span>
+          <textarea id="wordbookInput" placeholder="apple,苹果&#10;banana,香蕉&#10;cat,猫&#10;dog,狗"></textarea>
+          <p class="hint">每行一组词，英文和中文之间使用英文逗号。这里可临时覆盖当前单词本；部署到 GitHub 时，也可以把 .txt 放入 wordbooks 文件夹并写入 manifest.json。</p>
+          <button class="btn secondary" id="loadWordbookBtn">载入单词本</button>
+          <div class="message" id="wordbookMessage"></div>
+        </div>
+
+        <div class="panel-section">
+          <span class="label">规则</span>
+          <ol class="rules">
+            <li>每隔一段时间，底部生成 4、6 或 8 个单词块；随机单词块关闭时，每一排生成的单词块全部以中英配对形式出现。</li>
+            <li>新行生成时，旧内容整体向上移动一格。</li>
+            <li>英文与对应中文匹配成功即可消除。</li>
+            <li>每连续成功 3 次，本次匹配得分 +2。</li>
+          </ol>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    const COLS = 8;
+    const ROWS = 12;
+    const difficultySpeeds = {
+      easy: 4000,
+      normal: 3000,
+      hard: 2000
+    };
+    const difficultyNames = {
+      easy: "简单",
+      normal: "普通",
+      hard: "困难"
+    };
+
+    const defaultWordBook = [
+      { en: "apple", zh: "苹果" },
+      { en: "banana", zh: "香蕉" },
+      { en: "cat", zh: "猫" },
+      { en: "dog", zh: "狗" },
+      { en: "book", zh: "书" },
+      { en: "water", zh: "水" },
+      { en: "sun", zh: "太阳" },
+      { en: "moon", zh: "月亮" },
+      { en: "star", zh: "星星" },
+      { en: "flower", zh: "花" },
+      { en: "tree", zh: "树" },
+      { en: "bird", zh: "鸟" },
+      { en: "fish", zh: "鱼" },
+      { en: "house", zh: "房子" },
+      { en: "music", zh: "音乐" },
+      { en: "friend", zh: "朋友" }
+    ];
+
+    let grid = [];
+    let currentWordBook = [];
+    let availableWordBooks = [];
+    let activeWordBookKey = "builtin-default";
+    let score = 0;
+    let combo = 0;
+    let selectedBlocks = [];
+    let gameTimer = null;
+    let isGameRunning = false;
+    let isPaused = false;
+    let difficulty = "normal";
+    let randomBlockMode = false;
+    let blockIdSeed = 1;
+    let bestScore = Number(localStorage.getItem("word_rise_match_best") || 0);
+    let blockElements = new Map();
+    let cellElements = [];
+    let boardMetrics = { cellW: 0, cellH: 54, gap: 8 };
+
+    const boardEl = document.getElementById("board");
+    const startBtn = document.getElementById("startBtn");
+    const pauseBtn = document.getElementById("pauseBtn");
+    const difficultyGroup = document.getElementById("difficultyGroup");
+    const randomModeToggle = document.getElementById("randomModeToggle");
+    const randomModeHint = document.getElementById("randomModeHint");
+    const randomModeState = document.getElementById("randomModeState");
+    const scoreText = document.getElementById("scoreText");
+    const comboText = document.getElementById("comboText");
+    const bestText = document.getElementById("bestText");
+    const wordCountText = document.getElementById("wordCountText");
+    const wordbookStatus = document.getElementById("wordbookStatus");
+    const wordbookList = document.getElementById("wordbookList");
+    const wordbookInput = document.getElementById("wordbookInput");
+    const loadWordbookBtn = document.getElementById("loadWordbookBtn");
+    const wordbookMessage = document.getElementById("wordbookMessage");
+    const systemMessage = document.getElementById("systemMessage");
+    const overlay = document.getElementById("overlay");
+    const overlayTitle = document.getElementById("overlayTitle");
+    const overlayText = document.getElementById("overlayText");
+    const gameStateText = document.getElementById("gameStateText");
+    const speedText = document.getElementById("speedText");
+
+    function init() {
+      currentWordBook = normalizeWordBook(defaultWordBook);
+      availableWordBooks = [{
+        key: "builtin-default",
+        name: "默认单词本",
+        source: "内置",
+        words: currentWordBook
+      }];
+      resetGrid();
+      createBoardCells();
+      syncBoard();
+      updateUI();
+      renderWordBookButtons();
+      updateWordbookStatus("默认单词本已载入。", "success");
+      bindEvents();
+      loadExternalWordBooks();
+    }
+
+    function bindEvents() {
+      startBtn.addEventListener("click", startGame);
+      pauseBtn.addEventListener("click", togglePause);
+      loadWordbookBtn.addEventListener("click", loadCustomWordBook);
+      difficultyGroup.addEventListener("click", (event) => {
+        const button = event.target.closest("button[data-difficulty]");
+        if (!button) return;
+        setDifficulty(button.dataset.difficulty);
+      });
+      randomModeToggle.addEventListener("click", toggleRandomBlockMode);
+    }
+
+    function resetGrid() {
+      grid = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+      selectedBlocks = [];
+    }
+
+    function clearBlockDom() {
+      blockElements.forEach(el => el.remove());
+      blockElements.clear();
+    }
+
+    function createBoardCells() {
+      if (cellElements.length === ROWS * COLS) return;
+      boardEl.innerHTML = "";
+      cellElements = [];
+      for (let row = 0; row < ROWS; row++) {
+        for (let col = 0; col < COLS; col++) {
+          const cell = document.createElement("div");
+          cell.className = "cell";
+          boardEl.appendChild(cell);
+          cellElements.push(cell);
+        }
+      }
+    }
+
+    function normalizeWordBook(list) {
+      return list.map((item, index) => ({
+        id: index,
+        en: String(item.en).trim(),
+        zh: String(item.zh).trim()
+      }));
+    }
+
+    function startGame() {
+      stopTimer();
+      resetGrid();
+      score = 0;
+      combo = 0;
+      blockIdSeed = 1;
+      isGameRunning = true;
+      isPaused = false;
+      overlay.classList.remove("show");
+      startBtn.textContent = "重新开始";
+      pauseBtn.disabled = false;
+      pauseBtn.textContent = "暂停";
+      systemMessage.textContent = "游戏进行中：底部会持续生成新行。";
+      systemMessage.className = "message success";
+      clearBlockDom();
+      syncBoard();
+      updateUI();
+      generateAndPushRow();
+      startTimer();
+    }
+
+    function startTimer() {
+      stopTimer();
+      if (!isGameRunning || isPaused) return;
+      gameTimer = setInterval(generateAndPushRow, difficultySpeeds[difficulty]);
+    }
+
+    function stopTimer() {
+      if (gameTimer) {
+        clearInterval(gameTimer);
+        gameTimer = null;
+      }
+    }
+
+    function togglePause() {
+      if (!isGameRunning) return;
+      isPaused = !isPaused;
+      if (isPaused) {
+        stopTimer();
+        pauseBtn.textContent = "继续";
+        gameStateText.textContent = "已暂停";
+        systemMessage.textContent = "游戏已暂停。";
+        systemMessage.className = "message";
+      } else {
+        pauseBtn.textContent = "暂停";
+        gameStateText.textContent = "进行中：底部正在生成新行";
+        systemMessage.textContent = "游戏继续。";
+        systemMessage.className = "message success";
+        startTimer();
+      }
+    }
+
+    function toggleRandomBlockMode() {
+      randomBlockMode = !randomBlockMode;
+      randomModeToggle.classList.toggle("on", randomBlockMode);
+      randomModeToggle.setAttribute("aria-pressed", String(randomBlockMode));
+      randomModeState.textContent = randomBlockMode ? "ON" : "OFF";
+      randomModeHint.textContent = randomBlockMode
+        ? "ON：每一排按完全随机方式生成。"
+        : "OFF：每一排生成的单词块全部可匹配。";
+      systemMessage.textContent = randomBlockMode
+        ? "随机单词块已开启：后续新行将完全随机生成。"
+        : "随机单词块已关闭：后续新行中的所有单词块都会成对可匹配。";
+      systemMessage.className = "message success";
+    }
+
+    function setDifficulty(nextDifficulty) {
+      difficulty = nextDifficulty;
+      [...difficultyGroup.querySelectorAll("button")].forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.difficulty === difficulty);
+      });
+      speedText.textContent = `${difficultyNames[difficulty]}：每 ${difficultySpeeds[difficulty]}ms 生成一排`;
+      if (isGameRunning && !isPaused) startTimer();
+    }
+
+    function topRowHasBlock() {
+      return grid[0].some(Boolean);
+    }
+
+    function generateAndPushRow() {
+      if (!isGameRunning || isPaused) return;
+      if (topRowHasBlock()) {
+        endGame();
+        return;
+      }
+      grid.shift();
+      grid.push(createRandomRow());
+      selectedBlocks = [];
+      syncBoard();
+      updateUI();
+    }
+
+    function createRandomRow() {
+      return randomBlockMode ? createFullyRandomRow() : createMatchableRow();
+    }
+
+    function createFullyRandomRow() {
+      const row = Array(COLS).fill(null);
+      const count = randomEvenCount();
+      const columns = shuffle([...Array(COLS).keys()]).slice(0, count);
+      columns.forEach(col => {
+        row[col] = createRandomBlock();
+      });
+      return row;
+    }
+
+    function createMatchableRow() {
+      const row = Array(COLS).fill(null);
+      const count = randomEvenCount();
+      const columns = shuffle([...Array(COLS).keys()]).slice(0, count);
+      const pairCount = count / 2;
+      const wordIndices = shuffle([...Array(currentWordBook.length).keys()]).slice(0, pairCount);
+
+      for (let i = 0; i < pairCount; i++) {
+        const pairColumns = [columns[i * 2], columns[i * 2 + 1]];
+        const orderedPairColumns = Math.random() < 0.5 ? pairColumns : pairColumns.reverse();
+        row[orderedPairColumns[0]] = createBlockFromWord(wordIndices[i], "en");
+        row[orderedPairColumns[1]] = createBlockFromWord(wordIndices[i], "zh");
+      }
+
+      return row;
+    }
+
+    function createRandomBlock() {
+      const wordIndex = randomInt(0, currentWordBook.length - 1);
+      const type = Math.random() < 0.5 ? "en" : "zh";
+      return createBlockFromWord(wordIndex, type);
+    }
+
+    function createBlockFromWord(wordIndex, type) {
+      const word = currentWordBook[wordIndex];
+      return {
+        id: `block-${Date.now()}-${blockIdSeed++}`,
+        wordId: word.id,
+        type,
+        text: type === "en" ? word.en : word.zh
+      };
+    }
+
+    function measureBoard() {
+      const firstCell = cellElements[0];
+      if (!firstCell) return;
+      const rect = firstCell.getBoundingClientRect();
+      const style = getComputedStyle(boardEl);
+      boardMetrics.cellW = rect.width;
+      boardMetrics.cellH = rect.height;
+      boardMetrics.gap = parseFloat(style.gap) || 0;
+    }
+
+    function getBlockPosition(row, col) {
+      return {
+        x: col * (boardMetrics.cellW + boardMetrics.gap),
+        y: row * (boardMetrics.cellH + boardMetrics.gap)
+      };
+    }
+
+    function syncBoard() {
+      createBoardCells();
+      measureBoard();
+      const liveIds = new Set();
+
+      for (let row = 0; row < ROWS; row++) {
+        for (let col = 0; col < COLS; col++) {
+          const block = grid[row][col];
+          if (!block) continue;
+          liveIds.add(block.id);
+          let blockEl = blockElements.get(block.id);
+          if (!blockEl) {
+            blockEl = document.createElement("div");
+            blockEl.className = `block ${block.type}`;
+            blockEl.dataset.id = block.id;
+            blockEl.addEventListener("click", () => {
+              const found = findBlockById(blockEl.dataset.id);
+              if (found) handleBlockClick(found.row, found.col);
+            });
+            boardEl.appendChild(blockEl);
+            blockElements.set(block.id, blockEl);
+          }
+
+          blockEl.className = `block ${block.type}`;
+          if (selectedBlocks.some(item => item.block.id === block.id)) {
+            blockEl.classList.add("selected");
+          }
+          blockEl.textContent = block.text;
+          blockEl.title = block.type === "en" ? "英文块" : "中文块";
+          blockEl.style.width = `${boardMetrics.cellW}px`;
+          blockEl.style.height = `${boardMetrics.cellH}px`;
+          const pos = getBlockPosition(row, col);
+          const lift = selectedBlocks.some(item => item.block.id === block.id) ? -2 : 0;
+          const scale = selectedBlocks.some(item => item.block.id === block.id) ? 1.02 : 1;
+          blockEl.style.transform = `translate(${pos.x}px, ${pos.y + lift}px) scale(${scale})`;
+        }
+      }
+
+      blockElements.forEach((el, id) => {
+        if (!liveIds.has(id) && !el.classList.contains("success")) {
+          el.remove();
+          blockElements.delete(id);
+        }
+      });
+    }
+
+    function updateSelectionVisuals() {
+      blockElements.forEach((el, id) => {
+        const found = findBlockById(id);
+        if (!found) return;
+        const selected = selectedBlocks.some(item => item.block.id === id);
+        el.classList.toggle("selected", selected);
+        const pos = getBlockPosition(found.row, found.col);
+        el.style.transform = `translate(${pos.x}px, ${pos.y + (selected ? -2 : 0)}px) scale(${selected ? 1.02 : 1})`;
+      });
+    }
+
+    function findBlockById(id) {
+      for (let row = 0; row < ROWS; row++) {
+        for (let col = 0; col < COLS; col++) {
+          const block = grid[row][col];
+          if (block && block.id === id) return { row, col, block };
+        }
+      }
+      return null;
+    }
+
+    function handleBlockClick(row, col) {
+      if (!isGameRunning || isPaused) return;
+      const block = grid[row][col];
+      if (!block) return;
+
+      const existingIndex = selectedBlocks.findIndex(item => item.block.id === block.id);
+      if (existingIndex >= 0) {
+        selectedBlocks.splice(existingIndex, 1);
+        updateSelectionVisuals();
+        return;
+      }
+
+      selectedBlocks.push({ row, col, block });
+      if (selectedBlocks.length === 1) {
+        updateSelectionVisuals();
+        return;
+      }
+
+      if (selectedBlocks.length > 2) selectedBlocks = selectedBlocks.slice(-2);
+      const [first, second] = selectedBlocks;
+      updateSelectionVisuals();
+
+      const isMatch = first.block.wordId === second.block.wordId && first.block.type !== second.block.type;
+      if (isMatch) {
+        handleMatchSuccess(first, second);
+      } else {
+        handleMatchFailure(first, second);
+      }
+    }
+
+    function handleMatchSuccess(first, second) {
+      combo += 1;
+      const gained = combo % 3 === 0 ? 2 : 1;
+      score += gained;
+      markBlocks(first, second, "success");
+      burstParticles(first);
+      burstParticles(second);
+      systemMessage.textContent = combo % 3 === 0 ? `三连击达成，本次得分 +2。` : `匹配成功，本次得分 +1。`;
+      systemMessage.className = "message success";
+      setTimeout(() => {
+        clearBlockIfSame(first);
+        clearBlockIfSame(second);
+        selectedBlocks = [];
+        updateBestScore();
+        syncBoard();
+        updateUI();
+      }, 180);
+    }
+
+    function handleMatchFailure(first, second) {
+      combo = 0;
+      markBlocks(first, second, "error");
+      systemMessage.textContent = "匹配失败，连击已清零。";
+      systemMessage.className = "message error";
+      setTimeout(() => {
+        selectedBlocks = [];
+        syncBoard();
+        updateUI();
+      }, 360);
+    }
+
+    function markBlocks(first, second, className) {
+      [first, second].forEach(item => {
+        const blockEl = blockElements.get(item.block.id);
+        if (blockEl) blockEl.classList.add(className);
+      });
+    }
+
+    function burstParticles(item) {
+      const blockEl = blockElements.get(item.block.id);
+      if (!blockEl) return;
+      const boardRect = boardEl.getBoundingClientRect();
+      const rect = blockEl.getBoundingClientRect();
+      const cx = rect.left - boardRect.left + rect.width / 2;
+      const cy = rect.top - boardRect.top + rect.height / 2;
+      const colors = item.block.type === "en"
+        ? ["#1f5fbf", "#7bb2ff", "#d7e8ff", "#000000"]
+        : ["#a25000", "#ffb35f", "#ffe0ba", "#000000"];
+      for (let i = 0; i < 18; i++) {
+        const particle = document.createElement("span");
+        particle.className = "particle";
+        const angle = (Math.PI * 2 * i) / 18 + Math.random() * .25;
+        const distance = 22 + Math.random() * 44;
+        particle.style.left = `${cx}px`;
+        particle.style.top = `${cy}px`;
+        particle.style.background = colors[i % colors.length];
+        particle.style.setProperty("--dx", `${Math.cos(angle) * distance}px`);
+        particle.style.setProperty("--dy", `${Math.sin(angle) * distance}px`);
+        boardEl.appendChild(particle);
+        particle.addEventListener("animationend", () => particle.remove(), { once: true });
+      }
+    }
+
+    function clearBlockIfSame(item) {
+      const current = grid[item.row]?.[item.col];
+      if (current && current.id === item.block.id) {
+        grid[item.row][item.col] = null;
+      }
+    }
+
+    function endGame() {
+      stopTimer();
+      isGameRunning = false;
+      isPaused = false;
+      pauseBtn.disabled = true;
+      pauseBtn.textContent = "暂停";
+      startBtn.textContent = "重新开始";
+      selectedBlocks = [];
+      updateBestScore();
+      updateUI();
+      syncBoard();
+      overlayTitle.textContent = "游戏结束";
+      overlayText.textContent = `游戏结束！你的得分是：${score}`;
+      overlay.classList.add("show");
+      gameStateText.textContent = "游戏结束：顶部已被顶破";
+      systemMessage.textContent = `游戏结束！你的得分是：${score}`;
+      systemMessage.className = "message error";
+    }
+
+    function updateBestScore() {
+      if (score > bestScore) {
+        bestScore = score;
+        localStorage.setItem("word_rise_match_best", String(bestScore));
+      }
+    }
+
+    function updateUI() {
+      scoreText.textContent = score;
+      comboText.textContent = combo;
+      bestText.textContent = bestScore;
+      wordCountText.textContent = currentWordBook.length;
+      speedText.textContent = `${difficultyNames[difficulty]}：每 ${difficultySpeeds[difficulty]}ms 生成一排`;
+      if (!isGameRunning) {
+        if (!overlay.classList.contains("show")) gameStateText.textContent = "未开始：点击右侧按钮开始游戏";
+      } else if (!isPaused) {
+        gameStateText.textContent = "进行中：底部正在生成新行";
+      }
+    }
+
+    function updateWordbookStatus(text, type) {
+      wordbookStatus.textContent = text;
+      wordbookMessage.textContent = text;
+      wordbookMessage.className = `message ${type || ""}`.trim();
+      wordCountText.textContent = currentWordBook.length;
+    }
+
+    async function loadExternalWordBooks() {
+      try {
+        const manifestResponse = await fetch("wordbooks/manifest.json", { cache: "no-store" });
+        if (!manifestResponse.ok) {
+          updateWordbookStatus("未检测到外部单词本，已使用默认单词本。", "success");
+          return;
+        }
+
+        const manifest = await manifestResponse.json();
+        if (!Array.isArray(manifest) || manifest.length === 0) {
+          updateWordbookStatus("外部单词本清单为空，已使用默认单词本。", "success");
+          return;
+        }
+
+        const loadedBooks = [];
+        for (const item of manifest) {
+          const fileName = typeof item === "string" ? item : item.file;
+          const customName = typeof item === "object" && item ? item.name : "";
+          if (!fileName || !fileName.endsWith(".txt")) continue;
+
+          try {
+            const fileResponse = await fetch(`wordbooks/${encodeURIComponent(fileName)}`, { cache: "no-store" });
+            if (!fileResponse.ok) continue;
+            const text = await fileResponse.text();
+            const parsed = parseWordBookText(text);
+            if (parsed.length < 4) continue;
+
+            loadedBooks.push({
+              key: `external-${fileName}`,
+              name: customName || cleanWordBookName(fileName),
+              source: fileName,
+              words: normalizeWordBook(parsed)
+            });
+          } catch (error) {
+            console.warn(`单词本读取失败：${fileName}`, error);
+          }
+        }
+
+        if (loadedBooks.length === 0) {
+          updateWordbookStatus("没有读取到有效外部单词本，已使用默认单词本。", "success");
+          return;
+        }
+
+        availableWordBooks = [availableWordBooks[0], ...loadedBooks];
+        renderWordBookButtons();
+        updateWordbookStatus(`已读取 ${loadedBooks.length} 个外部单词本。当前使用：默认单词本。`, "success");
+      } catch (error) {
+        console.warn("外部单词本读取失败", error);
+        updateWordbookStatus("未检测到外部单词本，已使用默认单词本。", "success");
+      }
+    }
+
+    function renderWordBookButtons() {
+      wordbookList.innerHTML = "";
+      availableWordBooks.forEach(book => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "wordbook-option";
+        button.classList.toggle("active", book.key === activeWordBookKey);
+        button.textContent = book.name;
+        button.title = book.source ? `来源：${book.source}` : book.name;
+        button.addEventListener("click", () => selectWordBook(book.key));
+        wordbookList.appendChild(button);
+      });
+    }
+
+    function selectWordBook(key) {
+      const book = availableWordBooks.find(item => item.key === key);
+      if (!book) return;
+      activeWordBookKey = book.key;
+      currentWordBook = normalizeWordBook(book.words);
+      renderWordBookButtons();
+      updateWordbookStatus(`已切换至「${book.name}」，共 ${currentWordBook.length} 组词。`, "success");
+
+      if (!isGameRunning) resetGridAndRenderOnly();
+      if (isGameRunning) {
+        systemMessage.textContent = `已切换至「${book.name}」，后续生成的新行将使用该单词本。`;
+        systemMessage.className = "message success";
+      }
+    }
+
+    function cleanWordBookName(fileName) {
+      return fileName.replace(/\.txt$/i, "").replace(/[-_]+/g, " ");
+    }
+
+    function parseWordBookText(text) {
+      const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+      const parsed = [];
+      for (const line of lines) {
+        const parts = line.split(",");
+        if (parts.length !== 2 || !parts[0].trim() || !parts[1].trim()) {
+          return [];
+        }
+        parsed.push({ en: parts[0].trim(), zh: parts[1].trim() });
+      }
+      return parsed;
+    }
+
+    function loadCustomWordBook() {
+      const text = wordbookInput.value.trim();
+      if (!text) {
+        selectWordBook("builtin-default");
+        updateWordbookStatus(`已恢复默认单词本，共 ${currentWordBook.length} 组词。`, "success");
+        return;
+      }
+
+      const parsed = parseWordBookText(text);
+      if (parsed.length === 0) {
+        updateWordbookStatus("单词本格式错误，请使用：英文,中文", "error");
+        return;
+      }
+
+      if (parsed.length < 4) {
+        updateWordbookStatus("单词数量过少，请至少输入 4 组词汇。", "error");
+        return;
+      }
+
+      currentWordBook = normalizeWordBook(parsed);
+      const customBook = {
+        key: "textarea-custom",
+        name: "手动导入单词本",
+        source: "右侧文本框",
+        words: currentWordBook
+      };
+      const existingIndex = availableWordBooks.findIndex(book => book.key === customBook.key);
+      if (existingIndex >= 0) {
+        availableWordBooks[existingIndex] = customBook;
+      } else {
+        availableWordBooks.push(customBook);
+      }
+      activeWordBookKey = customBook.key;
+      renderWordBookButtons();
+      updateWordbookStatus(`手动导入单词本已载入，共 ${currentWordBook.length} 组词。`, "success");
+      if (!isGameRunning) resetGridAndRenderOnly();
+      if (isGameRunning) {
+        systemMessage.textContent = "新单词本已载入，后续生成的新行将使用新词汇。";
+        systemMessage.className = "message success";
+      }
+    }
+
+    function resetGridAndRenderOnly() {
+      resetGrid();
+      clearBlockDom();
+      syncBoard();
+      updateUI();
+    }
+
+    function randomInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function randomEvenCount() {
+      return [2, 4, 6, 8][Math.floor(Math.random() * 4)];
+    }
+
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+
+    window.addEventListener("resize", () => syncBoard());
+
+    init();
+  </script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+apple,苹果
+banana,香蕉
+bread,面包
+milk,牛奶
+rice,米饭
+egg,鸡蛋
+water,水
+cake,蛋糕
+fish,鱼
+meat,肉
+orange,橙子
+tea,茶
